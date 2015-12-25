@@ -10,7 +10,9 @@ var textChan = config[1]['textChan'];
 var voiceChan = config[1]['voiceChan'];
 var musicDir = config[2]['musicDir'];
 var songs = walkSync(musicDir);
+var d = new Date();
 var stopped = true;
+var notifs = [];
 var currentSong;
 var botID;
 
@@ -44,7 +46,14 @@ bot.on('message', function(user, userID, channelID, message, rawEvent) {
 			stop();
 			break;
 		case "!skip":
-			skip(user);
+			skip();
+			bot.deleteMessage({
+				channel: channelID,
+				messageID: rawEvent.d.id
+			});
+			break;
+		case "!halt":
+			halt();
 			bot.deleteMessage({
 				channel: channelID,
 				messageID: rawEvent.d.id
@@ -69,18 +78,18 @@ function play() {
 		rand = Math.floor(Math.random() * songs.length);
 		currentSong = songs[rand];
 		stream.playAudioFile( songs[rand]);
-    id3({ file: currentSong, type: id3.OPEN_LOCAL }, function(err, tags) {
-      title = tags['title'];
-      artist = tags['artist'];
-      console.log("Playing " + title + " - " + artist);
-      clearChannel(textChan);
-      notif(textChan, "Playing *" + title + "* - ***" + artist + "***");
-    });
+		id3({ file: currentSong, type: id3.OPEN_LOCAL }, function(err, tags) {
+			title = tags['title'];
+			artist = tags['artist'];
+			console.log("Playing " + title + " - " + artist);
+			notif(textChan, "Playing *" + title + "* - ***" + artist + "***");
+		});
 		stream.once('fileEnd',function(){
 			if(!stopped){
 				setTimeout(function(){
+					notifes = clear(textChan, notifs);
 					play();
-				}, 2000);
+				}, 5000);
 			}
 		});
 	});
@@ -110,13 +119,20 @@ function join(channelID, callback){
 	});
 }
 
-function notif(channelID, msg) {
+function halt() {
+	stop();
 	setTimeout(function(){
-		bot.sendMessage({
-			to: channelID,
-			message: msg,
-		});
-	}, 2000);
+		process.exit();
+	},5000);
+}
+
+function notif(channelID, msg) {
+	bot.sendMessage({
+		to: channelID,
+		message: msg,
+	}, function(res){
+		notifs.push(res.id);
+	});
 }
 
 function clearChannel(channelID) {
@@ -130,6 +146,17 @@ function clearChannel(channelID) {
 			});
 		}
 	});
+}
+
+function clear(channelID, msgList){
+	for (var i in msgList) {
+		bot.deleteMessage({
+			channel: channelID,
+			messageID: msgList[i]
+		});
+		msgList.splice(i,1);
+	}
+	return msgList;
 }
 
 function walkSync(dir) {
