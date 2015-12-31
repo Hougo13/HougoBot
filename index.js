@@ -6,8 +6,10 @@ var config = require('./bot.json');
 
 var email = config[0]['email'];
 var password = config[0]['password'];
-var textChan = config[1]['textChan'];
-var voiceChan = config[1]['voiceChan'];
+var chanName = {
+	'text': config[1]['textChan'],
+	'voice': config[1]['voiceChan']
+};
 var musicDir = config[2]['musicDir'];
 var songs = walkSync(musicDir);
 var d = new Date();
@@ -15,6 +17,8 @@ var stopped = true;
 var notifs = [];
 var currentSong;
 var botID;
+var voiceChan;
+var textChan;
 
 var bot = new DiscordClient({
 	email: email,
@@ -25,6 +29,23 @@ var bot = new DiscordClient({
 bot.on('ready', function(rawEvent) {
     botID = bot.id;
     console.log(bot.username + " - (" + botID + ")");
+		var key = Object.keys(bot.servers)[0];
+		var channels = bot.servers[key].channels;
+		var lastChan = 50;
+		for (var i = 0; i < lastChan; i++) {
+			var chan = channels[Object.keys(channels)[i]];
+			if (chan) {
+				if (chan['name'] == chanName['text'] && chan['type'] == 'text') {
+					textChan = chan['id'];
+					console.log("Found channel: "+chan['name']);
+				}else if (chan['name'] == chanName['voice'] && chan['type'] == 'voice') {
+					voiceChan = chan['id'];
+					console.log("Found channel: "+chan['name']);
+				}
+			}else {
+				lastChan = i;
+			}
+		}
 		clearChannel(textChan);
 		join(voiceChan, play);
 });
@@ -59,6 +80,16 @@ bot.on('message', function(user, userID, channelID, message, rawEvent) {
 				messageID: rawEvent.d.id
 			});
 			break;
+		case "!help":
+			bot.deleteMessage({
+				channel: channelID,
+				messageID: rawEvent.d.id
+			});
+			bot.sendMessage({
+			    to: userID,
+			    message: "You can use: !skip, !play, !stop"
+			});
+			break;
 		default:
 			if (userID != botID && channelID == textChan) {
 				bot.deleteMessage({
@@ -74,13 +105,16 @@ function play() {
   var title;
   var artist;
   stopped = false;
-	bot.testAudio({ channel:voiceChan , stereo: true}, function(stream) {
+	bot.getAudioContext({ channel:voiceChan , stereo: true}, function(stream) {
 		rand = Math.floor(Math.random() * songs.length);
 		currentSong = songs[rand];
-		stream.playAudioFile( songs[rand]);
+		stream.playAudioFile(songs[rand]);
 		id3({ file: currentSong, type: id3.OPEN_LOCAL }, function(err, tags) {
 			title = tags['title'];
 			artist = tags['artist'];
+			bot.setPresence({
+				game: artist
+		 });
 			console.log("Playing " + title + " - " + artist);
 			notif(textChan, "Playing *" + title + "* - ***" + artist + "***");
 		});
@@ -96,10 +130,11 @@ function play() {
 }
 
 function stop(){
-  bot.testAudio({ channel:voiceChan , stereo: true}, function(stream) {
+  bot.getAudioContext({ channel:voiceChan , stereo: true}, function(stream) {
 		stopped = true;
 		setTimeout(function(){ stream.stopAudioFile();},1000);
 	});
+	bot.setPresence({});
 	clearChannel(textChan);
 }
 
