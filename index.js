@@ -37,10 +37,10 @@ bot.on('ready', function(rawEvent) {
 			if (chan) {
 				if (chan['name'] == chanName['text'] && chan['type'] == 'text') {
 					textChan = chan['id'];
-					console.log("Found channel: "+chan['name']);
+					console.log("Found channel: "+chan['name']+" ("+chan['id']+")");
 				}else if (chan['name'] == chanName['voice'] && chan['type'] == 'voice') {
 					voiceChan = chan['id'];
-					console.log("Found channel: "+chan['name']);
+					console.log("Found channel: "+chan['name']+" ("+chan['id']+")");
 				}
 			}else {
 				lastChan = i;
