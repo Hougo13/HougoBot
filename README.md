@@ -25,3 +25,7 @@ edit `bot.json`
   }
 ]
 ```
+
+### Run
+
+`npm start`
